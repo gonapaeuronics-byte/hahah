@@ -118,7 +118,7 @@ async function fetchViaTmrDirect(connector, startStr, endStr) {
     row.date,
     ...connector.metrics.map(metric => row[metric] ?? 0),
   ]);
-},
+}
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${await res.text()}`);
