@@ -62,31 +62,63 @@ function loadBank() {
 }
 
 // ── TMR fetch: Anthropic MCP passthrough mode ──
-async function fetchViaAnthropicMcp(connector, startStr, endStr) {
-  if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not set');
-  const query = {
-    dateRange: { startDate: startStr, endDate: endStr },
-    dimensions: ['date'],
-    metrics: connector.metrics,
-    sort: [{ sortField: 'date', direction: 'asc' }],
-  };
-  const body = {
-    model: 'claude-sonnet-4-6',
-    max_tokens: 8000,
-    mcp_servers: [{ type: 'url', url: 'https://mcp.twominutereports.com/mcp', name: 'tmr' }],
-    system: 'You are a data assistant. Call the run_query MCP tool with the exact parameters given and return ONLY the raw JSON result. No explanation, no markdown, no code fences.',
-    messages: [{
-      role: 'user',
-      content: `Call run_query with teamId="${TMR_TEAM_ID}", connectors=[{connectorId:"${connector.connectorId}",accountIds:["${connector.accountId}"]${connector.currency ? `,currencyCode:"${connector.currency}"` : ''},queries:[{query:${JSON.stringify(query)},title:"result"}]}]. Return only the JSON.`,
-    }],
-  };
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
+async function fetchViaTmrDirect(connector, startStr, endStr) {
+  if (!TMR_API_KEY) throw new Error('TMR_API_KEY not set');
+
+  const accountId = connector.accountId.startsWith(`${connector.connectorId}_`)
+    ? connector.accountId
+    : `${connector.connectorId}_${connector.accountId}`;
+
+  const res = await fetch(
+    `https://api.twominutereports.com/v1/teams/${TMR_TEAM_ID}/data/run-query`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${TMR_API_KEY}`,
+      },
+      body: JSON.stringify({
+        accounts: [accountId],
+        dimensions: ['date'],
+        metrics: connector.metrics,
+        dateRange: {
+          startDate: startStr,
+          endDate: endStr,
+        },
+        sort: [
+          {
+            fieldId: 'date',
+            direction: 'asc',
+          },
+        ],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(
+      `TMR API ${res.status}: ${await res.text()}`
+    );
+  }
+
+  const response = await res.json();
+
+  if (!response.success) {
+    throw new Error(
+      `TMR query failed: ${JSON.stringify(response.error || response)}`
+    );
+  }
+
+  // TMR returns rows as objects:
+  // { date: "2026-08-11", cost: 123, clicks: 45, ... }
+  //
+  // The dashboard's bank.json expects arrays:
+  // [date, metric1, metric2, ...]
+  return (response.data || []).map(row => [
+    row.date,
+    ...connector.metrics.map(metric => row[metric] ?? 0),
+  ]);
+},
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${await res.text()}`);
