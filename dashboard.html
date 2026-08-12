@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Euronics Digital Command Centre</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+/* ── RESET & TOKENS ── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#1A7A7A;--teal-l:#2E9E9E;--teal-bg:#EAF6F6;--teal-dk:#0B4747;
+  --ink:#111827;--ink2:#374151;--ink3:#6B7280;--ink4:#9CA3AF;
+  --white:#FFFFFF;--gray50:#F9FAFB;--gray100:#F3F4F6;--gray200:#E5E7EB;
+  --green:#059669;--red:#DC2626;--amber:#D97706;--blue:#2563EB;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.06);
+  --shadow:0 1px 4px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 12px rgba(0,0,0,.1),0 2px 4px rgba(0,0,0,.06);
+  --r:8px;--r-lg:12px;--r-xl:16px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--gray50);color:var(--ink);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{height:56px;background:var(--teal-dk);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:500;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.hdr-brand{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:34px;height:34px;background:var(--teal-l);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:15px;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.15)}
+.hdr-title{font-size:14px;font-weight:700;color:#fff;letter-spacing:-.01em}
+.hdr-sub{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.sync-chip{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:4px 12px;font-size:11px;color:rgba(255,255,255,.75);white-space:nowrap}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#34D399;box-shadow:0 0 6px #34D399;flex-shrink:0}
+
+/* ── DATE BAR ── */
+.dbar{background:var(--white);border-bottom:1px solid var(--gray200);padding:0 24px;display:flex;align-items:center;gap:4px;height:48px}
+.dpill{font-size:12px;font-weight:500;padding:5px 14px;border-radius:20px;border:1.5px solid var(--gray200);background:transparent;color:var(--ink3);cursor:pointer;transition:all .15s}
+.dpill:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-bg)}
+.dpill.on{background:var(--teal);color:#fff;border-color:var(--teal);font-weight:600}
+.dbar-info{margin-left:auto;font-size:11px;color:var(--ink4)}
+.dr-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.dr-input{border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12.5px;font-family:inherit;color:var(--ink2);background:#fff;cursor:pointer}
+.dr-input:hover{border-color:var(--teal)}
+.dr-input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-bg)}
+.dr-arrow{color:var(--ink4);font-size:12px}
+
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:calc(100vh - 104px)}
+
+/* ── SIDEBAR CHANNEL NAV ── */
+.sidebar{width:200px;flex-shrink:0;background:var(--white);border-right:1px solid var(--gray200);padding:12px 8px;overflow-y:auto}
+.sidebar-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink4);padding:8px 10px 4px}
+.ch-btn{width:100%;display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--r);border:none;background:transparent;color:var(--ink2);cursor:pointer;transition:all .15s;font-size:13px;font-weight:500;text-align:left;margin-bottom:2px}
+.ch-btn:hover{background:var(--gray100)}
+.ch-btn.on{background:var(--teal-bg);color:var(--teal);font-weight:600}
+.ch-btn.on .ch-dot{box-shadow:0 0 0 2px var(--teal-bg),0 0 0 3px currentColor}
+.ch-icon{width:20px;height:20px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ch-icon svg{width:20px;height:20px}
+.ch-dot{width:7px;height:7px;border-radius:50%;margin-left:auto;flex-shrink:0}
+
+/* ── MAIN CONTENT ── */
+.content{flex:1;overflow-x:hidden;padding:20px 24px 48px}
+
+/* ── PANELS ── */
+.panel{display:none}.panel.on{display:block}
+
+/* ── PAGE HEADER ── */
+.page-hdr{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.page-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.page-icon svg{width:24px;height:24px}
+.page-title{font-size:18px;font-weight:700;color:var(--ink)}
+.page-sub{font-size:12px;color:var(--ink3);margin-top:1px}
+.page-badge{margin-left:auto;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:var(--teal-bg);color:var(--teal)}
+
+/* ── KPI GRID ── */
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.kcard{background:var(--white);border:1.5px solid var(--gray200);border-radius:var(--r-lg);padding:14px 16px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.kcard::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--kc);border-radius:3px 0 0 3px;opacity:.5;transition:opacity .18s}
+.kcard:hover{border-color:var(--kc);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.kcard:hover::after,.kcard.on::after{opacity:1}
+.kcard.on{border-color:var(--kc);box-shadow:0 0 0 3px color-mix(in srgb,var(--kc) 15%,transparent);background:color-mix(in srgb,var(--kc) 5%,white)}
+.kl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink4);margin-bottom:5px}
+.kv{font-size:22px;font-weight:800;color:var(--ink);line-height:1;margin-bottom:2px}
+.ks{font-size:10px;color:var(--ink4)}
+
+/* ── SPOTLIGHT ── */
+.spotlight{background:var(--white);border:1.5px solid var(--gray200);border-radius:var(--r-xl);padding:20px;margin-bottom:16px;min-height:260px;transition:all .2s}
+.spot-hdr{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.spot-title{font-size:14px;font-weight:700;color:var(--ink)}
+.spot-sub{font-size:12px;color:var(--ink3);margin-bottom:14px}
+.spot-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--ink4);font-size:13px;gap:8px}
+.spot-empty svg{width:32px;height:32px;opacity:.3}
+
+/* ── TREND MODAL (shared popup for all KPI-card trend views) ── */
+.trend-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.trend-modal.show{display:flex}
+.trend-modal-panel{background:var(--white);border-radius:16px;padding:22px 24px;width:100%;max-width:640px;box-shadow:0 25px 70px rgba(0,0,0,.35);animation:trendPop .15s ease}
+@keyframes trendPop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+.trend-modal-hdr{display:flex;justify-content:space-between;align-items:center}
+.trend-modal-title{font-size:16px;font-weight:700;color:var(--ink)}
+.trend-modal-close{border:none;background:var(--gray100);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:14px;color:var(--ink3);line-height:1}
+.trend-modal-close:hover{background:var(--gray200);color:var(--ink)}
+.trend-modal-sub{font-size:12px;color:var(--ink4);margin-top:2px}
+
+/* ── CHART GRID ── */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.cgrid-1{grid-template-columns:1fr}
+.ccard{background:var(--white);border:1.5px solid var(--gray200);border-radius:var(--r-lg);padding:16px 18px}
+.ct{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.cs{font-size:11px;color:var(--ink3);margin-bottom:12px}
+.leg{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:11px;color:var(--ink3)}
+.legsq{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:8px 10px;color:var(--ink4);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--gray200);background:var(--gray50)}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--gray100);color:var(--ink2)}
+.tbl td:first-child{color:var(--ink);font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--gray50)}
+.star{color:#FBBF24}
+
+/* ── AI PANEL ── */
+.aip{background:var(--white);border:1.5px solid var(--gray200);border-radius:var(--r-xl);overflow:hidden;margin-bottom:16px}
+.aip-hdr{background:linear-gradient(135deg,var(--teal-bg),#d4efef);padding:12px 18px;border-bottom:1px solid var(--gray200);display:flex;align-items:center;gap:8px}
+.aip-title{font-size:13px;font-weight:700;color:var(--teal-dk)}
+.aip-body{padding:16px 18px}
+.ai-txt{font-size:13px;color:var(--ink2);line-height:1.75;min-height:56px}
+.ai-note{margin-top:8px;font-size:11px;color:var(--ink4);font-style:italic}
+.ai-spin{display:inline-flex;align-items:center;gap:8px;color:var(--ink3);font-size:12px}
+.ai-spin::before{content:'';width:14px;height:14px;border:2px solid var(--gray200);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid var(--gray100)}
+.ai-act{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--r);border:1.5px solid var(--gray200);background:var(--white);color:var(--ink2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.ai-act svg{width:13px;height:13px;flex-shrink:0}
+.ai-act:hover,.ai-act.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+.ask-wrap{display:none;gap:8px;margin-top:10px}
+.ask-wrap.show{display:flex}
+.ask-inp{flex:1;font-size:13px;padding:8px 12px;border:1.5px solid var(--gray200);border-radius:var(--r);outline:none;background:var(--white);transition:border .15s}
+.ask-inp:focus{border-color:var(--teal)}
+.ask-send{font-size:13px;font-weight:600;padding:8px 16px;border-radius:var(--r);border:none;background:var(--teal);color:#fff;cursor:pointer}
+
+/* ── NOT CONNECTED ── */
+.not-connected{background:var(--white);border:2px dashed var(--gray200);border-radius:var(--r-xl);padding:48px 24px;text-align:center;margin-bottom:16px}
+.nc-icon{font-size:40px;margin-bottom:14px}
+.nc-title{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.nc-sub{font-size:13px;color:var(--ink3);max-width:380px;margin:0 auto 20px}
+.nc-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:10px 20px;background:var(--teal);color:#fff;border:none;border-radius:var(--r);cursor:pointer}
+
+/* ── MISC ── */
+.nod{padding:32px;text-align:center;color:var(--ink4);font-size:13px;grid-column:1/-1}
+@media(max-width:768px){
+  .sidebar{display:none}
+  .content{padding:14px 12px 40px}
+  .cgrid{grid-template-columns:1fr}
+  .kgrid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-logo">E</div>
+    <div>
+      <div class="hdr-title">Euronics Digital Command Centre</div>
+      <div class="hdr-sub">All channels &bull; Euronics Industries Pvt. Ltd.</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="sync-chip">
+      <div class="sync-dot"></div>
+      <span id="syncLabel">Last sync: 13 Jul 2026, 11:00 AM</span>
+    </div>
+  </div>
+</header>
+
+<!-- DATE BAR -->
+<div class="dbar">
+  <button class="dpill on" onclick="setRange(this,'7')">Last 7 days</button>
+  <button class="dpill" onclick="setRange(this,'15')">Last 15 days</button>
+  <button class="dpill" onclick="setRange(this,'30')">Last 30 days</button>
+  <button class="dpill" onclick="setRange(this,'90')">Last 3 months</button>
+  <button class="dpill" onclick="setMTD(this)">MTD</button>
+  <span class="dr-sep"></span>
+  <input type="date" id="drFrom" class="dr-input" min="2026-05-12" max="2026-08-11" onchange="setCustomRange()">
+  <span class="dr-arrow">&rarr;</span>
+  <input type="date" id="drTo" class="dr-input" min="2026-05-12" max="2026-08-11" onchange="setCustomRange()">
+  <span class="dbar-info">12 channels &bull; data &le; 3 months</span>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-label">Paid</div>
+  <button class="ch-btn on" onclick="switchTab('amazon')" id="sb-amazon">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#FF9900"/><text x="12" y="17" font-size="13" font-weight="900" fill="white" text-anchor="middle" font-family="Arial">a</text></svg></div>
+    Amazon Ads
+    <span class="ch-dot" style="background:#FF9900"></span>
+  </button>
+  <button class="ch-btn" onclick="switchTab('gads')" id="sb-gads">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#fff" stroke="#e5e7eb"/><circle cx="8" cy="15" r="4" fill="#FBBC04"/><circle cx="16" cy="15" r="4" fill="#34A853"/><circle cx="12" cy="9" r="4" fill="#4285F4"/></svg></div>
+    Google Ads
+    <span class="ch-dot" style="background:#4285F4"></span>
+  </button>
+  <button class="ch-btn" onclick="switchTab('meta')" id="sb-meta">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#1877F2"/><path d="M13 12.5h2l.5-3H13v-1.5c0-.8.4-1.5 1.5-1.5H16V3.7S14.9 3.5 14 3.5c-2.5 0-4 1.5-4 4V9.5H7v3h3V20h3v-7.5z" fill="white"/></svg></div>
+    Meta Ads
+    <span class="ch-dot" style="background:#1877F2"></span>
+  </button>
+  <button class="ch-btn" onclick="switchTab('lads')" id="sb-lads">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#0A66C2"/><path d="M7 9h2.5v8H7V9zm1.25-3.75a1.45 1.45 0 110 2.9 1.45 1.45 0 010-2.9zM11 9h2.5v1.1c.4-.7 1.2-1.3 2.5-1.3 2.6 0 3 1.7 3 3.9V17H16.5v-3.5c0-.9 0-2-1.2-2S14 12.4 14 13.5V17H11V9z" fill="white"/></svg></div>
+    LinkedIn Ads
+    <span class="ch-dot" style="background:#0A66C2"></span>
+  </button>
+
+  <div class="sidebar-label" style="margin-top:8px">Marketplace</div>
+  <button class="ch-btn" onclick="switchTab('seller')" id="sb-seller">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#FF9900"/><text x="12" y="17" font-size="11" font-weight="900" fill="white" text-anchor="middle" font-family="Arial">amz</text></svg></div>
+    Amazon Mkt.
+    <span class="ch-dot" style="background:#f97316"></span>
+  </button>
+  <button class="ch-btn" onclick="switchTab('fba')" id="sb-fba">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#146EB4"/><path d="M6 9h12v2H6zm0 3h12v2H6zm0 3h8v2H6z" fill="white"/></svg></div>
+    FBA
+    <span class="ch-dot" style="background:#146EB4"></span>
+  </button>
+  <button class="ch-btn" onclick="switchTab('shopify')" id="sb-shopify">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#96BF48"/><path d="M15.5 6.2c0 0-.3-.1-.7-.1-.3-.8-.9-1.6-1.8-1.6h-.1c-.3-.4-.6-.5-.9-.5-2.2 0-3.2 2.7-3.5 4.1l-2.1.3-.3 9.5 8.3 1.5 4.4-1.5-1.5-12.7h-1.8zm-3-.7c.6 0 1 .6 1.3 1.4h-2.6c.3-1 .9-1.4 1.3-1.4z" fill="white"/></svg></div>
+    Shopify
+    <span class="ch-dot" style="background:#96BF48"></span>
+  </button>
+
+  <div class="sidebar-label" style="margin-top:8px">Organic</div>
+  <button class="ch-btn" onclick="switchTab('ga4')" id="sb-ga4">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#E37400"/><rect x="5" y="14" width="4" height="6" rx="1" fill="white"/><rect x="10" y="10" width="4" height="10" rx="1" fill="white" opacity=".8"/><rect x="15" y="6" width="4" height="14" rx="1" fill="white" opacity=".6"/></svg></div>
+    GA4
+    <span class="ch-dot" style="background:#E37400"></span>
+  </button>
+  <button class="ch-btn" onclick="switchTab('gsc')" id="sb-gsc">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#fff" stroke="#e5e7eb"/><circle cx="11" cy="11" r="5" fill="none" stroke="#4285F4" stroke-width="2"/><line x1="15" y1="15" x2="19" y2="19" stroke="#34A853" stroke-width="2" stroke-linecap="round"/></svg></div>
+    Search Console
+    <span class="ch-dot" style="background:#34A853"></span>
+  </button>
+  
+
+  <div class="sidebar-label" style="margin-top:8px">Social</div>
+  <button class="ch-btn" onclick="switchTab('ins')" id="sb-ins">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><defs><linearGradient id="ig2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#FED373"/><stop offset="40%" style="stop-color:#F15245"/><stop offset="80%" style="stop-color:#D92E7F"/><stop offset="100%" style="stop-color:#9B36B7"/></linearGradient></defs><rect width="24" height="24" rx="5" fill="url(#ig2)"/><rect x="6" y="6" width="12" height="12" rx="3.5" fill="none" stroke="white" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="none" stroke="white" stroke-width="1.5"/><circle cx="16.5" cy="7.5" r="1" fill="white"/></svg></div>
+    Instagram
+    <span class="ch-dot" style="background:#E1306C"></span>
+  </button>
+  <button class="ch-btn" onclick="switchTab('lps')" id="sb-lps">
+    <div class="ch-icon"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#0A66C2"/><path d="M7 9h2.5v8H7V9zm1.25-3.75a1.45 1.45 0 110 2.9 1.45 1.45 0 010-2.9zM11 9h2.5v1.1c.4-.7 1.2-1.3 2.5-1.3 2.6 0 3 1.7 3 3.9V17H16.5v-3.5c0-.9 0-2-1.2-2S14 12.4 14 13.5V17H11V9z" fill="white"/></svg></div>
+    LinkedIn Organic
+    <span class="ch-dot" style="background:#0A66C2"></span>
+  </button>
+  
+</nav>
+
+<!-- CONTENT -->
+<main class="content">
+
+<!-- ═══════════════ AMAZON ADS ═══════════════ -->
+<div class="panel on" id="p-amazon">
+  <div class="page-hdr">
+    <div class="page-icon" style="background:#FFF3E0"><svg viewBox="0 0 24 24"><text x="12" y="17" font-size="13" font-weight="900" fill="#FF9900" text-anchor="middle" font-family="Arial">a</text></svg></div>
+    <div><div class="page-title">Amazon Ads</div><div class="page-sub">India Marketplace · Sponsored Products & Brands</div></div>
+    <span class="page-badge">EuronicsIndia</span>
+  </div>
+  <div class="kgrid" id="k-amazon"></div>
+  
+  <div class="cgrid">
+    <div class="ccard"><div class="ct">Daily spend vs ad sales</div><div class="cs">₹ INR — India marketplace</div><div class="leg"><span><span class="legsq" style="background:#FF9900"></span>Spend</span><span><span class="legsq" style="background:#34D399"></span>Ad Sales</span></div><div style="position:relative;height:180px"><canvas id="c-amzSS"></canvas></div></div>
+    <div class="ccard"><div class="ct">Top campaigns by spend</div><div class="cs">30-day — ranked by cost</div><div style="position:relative;height:180px"><canvas id="c-amzC"></canvas></div></div>
+  </div>
+  <div class="cgrid">
+    <div class="ccard"><div class="ct">ROAS trend</div><div class="cs">Return on ad spend — daily</div><div style="position:relative;height:150px"><canvas id="c-amzROAS"></canvas></div></div>
+    <div class="ccard"><div class="ct">ACOS trend</div><div class="cs">Advertising cost of sales %</div><div style="position:relative;height:150px"><canvas id="c-amzACOS"></canvas></div></div>
+  </div>
+    <div class="ccard" style="margin-bottom:12px">
+    <div class="ct">Campaign breakdown — top 15 by spend</div>
+    <div class="cs">30-day · spend, sales, orders, ACOS, ROAS, clicks</div>
+    <div style="overflow:auto;max-height:280px">
+      <table class="tbl"><thead><tr><th>Campaign</th><th>Spend</th><th>Sales</th><th>Orders</th><th>ACOS</th><th>ROAS</th><th>Clicks</th></tr></thead>
+      <tbody id="amz-camps-tbl"></tbody></table>
+    </div>
+  </div>
+<div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — Amazon Ads</div></div><div class="aip-body"><div class="ai-txt" id="ai-amazon"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('amazon','analyse')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Analyse performance</button><button class="ai-act" onclick="aiAct('amazon','working')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Top 3 working</button><button class="ai-act" onclick="aiAct('amazon','notworking')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Top 3 not working</button><button class="ai-act" onclick="aiAct('amazon','improve')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('amazon')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-width="2" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>Ask AI</button></div><div class="ask-wrap" id="ask-amazon"><input class="ask-inp" placeholder="Ask anything about Amazon Ads…" id="q-amazon" onkeydown="if(event.key==='Enter')sendAsk('amazon')"><button class="ask-send" onclick="sendAsk('amazon')">Send</button></div></div></div>
+</div>
+
+<!-- GOOGLE ADS -->
+<div class="panel" id="p-gads">
+  <div class="page-hdr">
+    <div class="page-icon" style="background:#EEF2FF"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="none"/><circle cx="8" cy="15" r="4" fill="#FBBC04"/><circle cx="16" cy="15" r="4" fill="#34A853"/><circle cx="12" cy="9" r="4" fill="#4285F4"/></svg></div>
+    <div><div class="page-title">Google Ads</div><div class="page-sub">euronics.co.in · Account #2186126678</div></div>
+    <span class="page-badge" style="background:#EEF2FF;color:#2563EB">Connected</span>
+  </div>
+  <div class="kgrid" id="k-gads"></div>
+  
+  <div class="cgrid">
+    <div class="ccard"><div class="ct">Daily leads vs spend</div><div class="cs">₹ — euronics.co.in</div><div class="leg"><span><span class="legsq" style="background:#059669"></span>Leads</span><span><span class="legsq" style="background:#4285F4"></span>Spend</span></div><div style="position:relative;height:180px"><canvas id="c-gadsSC"></canvas></div></div>
+    <div class="ccard"><div class="ct">Top campaigns by spend (30d)</div><div class="cs">Active campaigns ranked by cost</div><div style="position:relative;height:180px"><canvas id="c-gadsC"></canvas></div></div>
+  </div>
+    <div class="ccard" style="margin-bottom:12px">
+    <div class="ct">Campaign breakdown — top 12 active</div>
+    <div class="cs">30-day · spend, clicks, conversions, CPL</div>
+    <div style="overflow:auto;max-height:280px">
+      <table class="tbl"><thead><tr><th>Campaign</th><th>Spend</th><th>Clicks</th><th>Convs.</th><th>CPL</th></tr></thead>
+      <tbody id="gads-camps-tbl"></tbody></table>
+    </div>
+  </div>
+<div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — Google Ads</div></div><div class="aip-body"><div class="ai-txt" id="ai-gads"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('gads','analyse')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Analyse performance</button><button class="ai-act" onclick="aiAct('gads','working')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Top 3 working</button><button class="ai-act" onclick="aiAct('gads','notworking')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Top 3 not working</button><button class="ai-act" onclick="aiAct('gads','improve')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('gads')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-width="2" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>Ask AI</button></div><div class="ask-wrap" id="ask-gads"><input class="ask-inp" placeholder="Ask anything about Google Ads…" id="q-gads" onkeydown="if(event.key==='Enter')sendAsk('gads')"><button class="ask-send" onclick="sendAsk('gads')">Send</button></div></div></div>
+</div>
+
+<!-- META ADS -->
+<div class="panel" id="p-meta">
+  <div class="page-hdr"><div class="page-icon" style="background:#EFF6FF"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#1877F2"/><path d="M13 12.5h2l.5-3H13v-1.5c0-.8.4-1.5 1.5-1.5H16V3.7S14.9 3.5 14 3.5c-2.5 0-4 1.5-4 4V9.5H7v3h3V20h3v-7.5z" fill="white"/></svg></div><div><div class="page-title">Meta Ads</div><div class="page-sub">Facebook — Euronics account</div></div><span class="page-badge" style="background:#EFF6FF;color:#1877F2">Connected</span></div>
+  <div class="kgrid" id="k-meta"></div>
+  
+  <div class="cgrid"><div class="ccard"><div class="ct">Inquiries vs spend</div><div class="cs">Daily "Inquiry Now" conversions vs ₹ spend</div><div style="position:relative;height:180px"><canvas id="c-mS"></canvas></div></div><div class="ccard"><div class="ct">Daily reach</div><div class="cs">Unique audience reached</div><div style="position:relative;height:180px"><canvas id="c-mR"></canvas></div></div></div>
+    <div class="cgrid" style="margin-bottom:12px">
+    <div class="ccard"><div class="ct">Reach vs impressions</div><div class="cs">Unique audience vs total views</div><div class="leg"><span><span class="legsq" style="background:#1877F2"></span>Reach</span><span><span class="legsq" style="background:#60A5FA"></span>Impressions/100</span></div><div style="position:relative;height:170px"><canvas id="c-mRI"></canvas></div></div>
+    <div class="ccard"><div class="ct">CTR & frequency trend</div><div class="cs">Click rate & avg exposures</div><div class="leg"><span><span class="legsq" style="background:#8B5CF6"></span>CTR %</span><span><span class="legsq" style="background:#F59E0B"></span>Frequency</span></div><div style="position:relative;height:170px"><canvas id="c-mFreq"></canvas></div></div>
+    <div class="ccard"><div class="ct">Purchase value vs ROAS</div><div class="cs">Pixel-tracked purchases — sparse, real days only</div><div style="position:relative;height:170px"><canvas id="c-mRoas"></canvas></div></div>
+  </div>
+<div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — Meta Ads</div></div><div class="aip-body"><div class="ai-txt" id="ai-meta"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('meta','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('meta','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('meta','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('meta','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('meta')">Ask AI</button></div><div class="ask-wrap" id="ask-meta"><input class="ask-inp" placeholder="Ask about Meta Ads…" id="q-meta" onkeydown="if(event.key==='Enter')sendAsk('meta')"><button class="ask-send" onclick="sendAsk('meta')">Send</button></div></div></div>
+</div>
+
+<!-- LINKEDIN ADS -->
+<div class="panel" id="p-lads">
+  <div class="page-hdr"><div class="page-icon" style="background:#EFF6FF"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#0A66C2"/><path d="M7 9h2.5v8H7V9zm1.25-3.75a1.45 1.45 0 110 2.9 1.45 1.45 0 010-2.9zM11 9h2.5v1.1c.4-.7 1.2-1.3 2.5-1.3 2.6 0 3 1.7 3 3.9V17H16.5v-3.5c0-.9 0-2-1.2-2S14 12.4 14 13.5V17H11V9z" fill="white"/></svg></div><div><div class="page-title">LinkedIn Ads</div><div class="page-sub">3 Euronics ad accounts</div></div></div>
+  <div class="kgrid" id="k-lads"></div>
+  <div class="cgrid">
+    <div class="ccard"><div class="ct">Daily spend vs clicks</div><div class="cs">Only 12 active days in the last 90 — two short bursts</div><div style="position:relative;height:180px"><canvas id="c-ladsSC"></canvas></div></div>
+    <div class="ccard"><div class="ct">CPC trend</div><div class="cs">Cost per click, active days only</div><div style="position:relative;height:180px"><canvas id="c-ladsCPC"></canvas></div></div>
+  </div>
+  <div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — LinkedIn Ads</div></div><div class="aip-body"><div class="ai-txt" id="ai-lads"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('lads','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('lads','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('lads','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('lads','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('lads')">Ask AI</button></div><div class="ask-wrap" id="ask-lads"><input class="ask-inp" placeholder="Ask about LinkedIn Ads…" id="q-lads" onkeydown="if(event.key==='Enter')sendAsk('lads')"><button class="ask-send" onclick="sendAsk('lads')">Send</button></div></div></div>
+</div>
+
+<!-- AMAZON SELLER -->
+<div class="panel" id="p-seller">
+  <div class="page-hdr"><div class="page-icon" style="background:#FFF3E0"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#FF9900"/><text x="12" y="16" font-size="9" font-weight="900" fill="white" text-anchor="middle" font-family="Arial">AMZ</text></svg></div><div><div class="page-title">Amazon Marketplace</div><div class="page-sub">Seller Central — India</div></div><span class="page-badge" style="background:#FFF3E0;color:#f97316">Organic Sales</span></div>
+  <div class="kgrid" id="k-seller"></div>
+  
+  <div class="cgrid"><div class="ccard"><div class="ct">Daily revenue</div><div class="cs">Amazon India — total sales ₹</div><div style="position:relative;height:180px"><canvas id="c-slR"></canvas></div></div><div class="ccard"><div class="ct">Orders vs sessions</div><div class="cs">Volume and traffic trend</div><div class="leg"><span><span class="legsq" style="background:#FF9900"></span>Orders</span><span><span class="legsq" style="background:#60a5fa"></span>Sessions/100</span></div><div style="position:relative;height:180px"><canvas id="c-slOS"></canvas></div></div></div>
+    <div class="cgrid" style="margin-bottom:12px">
+    <div class="ccard"><div class="ct">B2B revenue vs B2B units</div><div class="cs">Business order performance daily</div><div class="leg"><span><span class="legsq" style="background:#0A66C2"></span>B2B sales ₹</span><span><span class="legsq" style="background:#60A5FA"></span>B2B units</span></div><div style="position:relative;height:170px"><canvas id="c-slB2b"></canvas></div></div>
+    <div class="ccard"><div class="ct">Sessions vs orders</div><div class="cs">Traffic and conversion trend</div><div class="leg"><span><span class="legsq" style="background:#FF9900"></span>Orders</span><span><span class="legsq" style="background:#60A5FA"></span>Sessions/100</span></div><div style="position:relative;height:170px"><canvas id="c-slOS"></canvas></div></div>
+  </div>
+<div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — Amazon Marketplace</div></div><div class="aip-body"><div class="ai-txt" id="ai-seller"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('seller','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('seller','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('seller','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('seller','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('seller')">Ask AI</button></div><div class="ask-wrap" id="ask-seller"><input class="ask-inp" placeholder="Ask about Amazon Marketplace…" id="q-seller" onkeydown="if(event.key==='Enter')sendAsk('seller')"><button class="ask-send" onclick="sendAsk('seller')">Send</button></div></div></div>
+</div>
+
+<!-- FBA -->
+<div class="panel" id="p-fba">
+  <div class="page-hdr"><div class="page-icon" style="background:#E8F1FA"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#146EB4"/><path d="M6 9h12v2H6zm0 3h12v2H6zm0 3h8v2H6z" fill="white"/></svg></div><div><div class="page-title">FBA — Fulfilled by Amazon</div><div class="page-sub">Inventory health across Amazon fulfillment centers</div></div><span class="page-badge" style="background:#E8F1FA;color:#146EB4">Live snapshot</span></div>
+  <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400E;margin-bottom:12px">ℹ️ Amazon's per-fulfillment-center location breakdown (Inventory Ledger report) returned no data for this account/period, so figures below are SKU-level totals combined across all FCs — not broken out by individual warehouse.</div>
+  <div class="kgrid" id="k-fba"></div>
+  
+  <div class="cgrid">
+    <div class="ccard"><div class="ct">Top 10 SKUs by fulfillable stock</div><div class="cs">Units ready to ship right now</div><div style="position:relative;height:220px"><canvas id="c-fbaTop"></canvas></div></div>
+    <div class="ccard"><div class="ct">Inventory status split</div><div class="cs">Fulfillable vs inbound vs reserved vs unfulfillable</div><div style="position:relative;height:220px"><canvas id="c-fbaSplit"></canvas></div></div>
+  </div>
+  <div class="tbl-wrap">
+    <div class="tbl-hdr"><span>⚠️ Low & out-of-stock SKUs</span><span class="tbl-note" id="fba-low-sub">Fulfillable ≤ 20 units or zero</span></div>
+    <table class="tbl"><thead><tr><th>ASIN</th><th>Product</th><th>Total qty</th><th>Fulfillable</th><th>Inbound (pipeline)</th><th>Reserved</th><th>Unfulfillable</th></tr></thead><tbody id="fba-low-rows"></tbody></table>
+  </div>
+  <div class="tbl-wrap" style="margin-top:12px">
+    <div class="tbl-hdr"><span>📦 Full FBA inventory — all SKUs</span><span class="tbl-note">Sorted by total quantity</span></div>
+    <table class="tbl"><thead><tr><th>ASIN</th><th>Product</th><th>Total</th><th>Fulfillable</th><th>Inbound working</th><th>Inbound shipped</th><th>Inbound receiving</th><th>Reserved</th><th>Unfulfillable</th><th>FC processing</th></tr></thead><tbody id="fba-all-rows"></tbody></table>
+  </div>
+<div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — FBA Inventory</div></div><div class="aip-body"><div class="ai-txt" id="ai-fba"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('fba','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('fba','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('fba','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('fba','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('fba')">Ask AI</button></div><div class="ask-wrap" id="ask-fba"><input class="ask-inp" placeholder="Ask about FBA inventory…" id="q-fba" onkeydown="if(event.key==='Enter')sendAsk('fba')"><button class="ask-send" onclick="sendAsk('fba')">Ask</button></div></div></div>
+</div>
+
+<!-- SHOPIFY -->
+<div class="panel" id="p-shopify">
+  <div class="page-hdr"><div class="page-icon" style="background:#F0FDF4"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#96BF48"/><text x="12" y="16" font-size="9" font-weight="900" fill="white" text-anchor="middle" font-family="Arial">SHO</text></svg></div><div><div class="page-title">Shopify</div><div class="page-sub">euronics-india store</div></div></div>
+  <div class="kgrid" id="k-shopify"></div>
+  
+  <div class="cgrid"><div class="ccard"><div class="ct">Daily revenue</div><div class="cs">Gross sales — ₹</div><div style="position:relative;height:180px"><canvas id="c-shR"></canvas></div></div><div class="ccard"><div class="ct">Daily orders</div><div class="cs">Order volume</div><div style="position:relative;height:180px"><canvas id="c-shO"></canvas></div></div></div>
+  <div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — Shopify</div></div><div class="aip-body"><div class="ai-txt" id="ai-shopify"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('shopify','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('shopify','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('shopify','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('shopify','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('shopify')">Ask AI</button></div><div class="ask-wrap" id="ask-shopify"><input class="ask-inp" placeholder="Ask about Shopify…" id="q-shopify" onkeydown="if(event.key==='Enter')sendAsk('shopify')"><button class="ask-send" onclick="sendAsk('shopify')">Send</button></div></div></div>
+</div>
+
+<!-- GA4 -->
+<div class="panel" id="p-ga4">
+  <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;font-size:12px;color:#991B1B;margin-bottom:12px">⚠️ <b>Data frozen at 13 Jul 2026.</b> The GA4 property this tab was built on (euronics.co.in, account 350385395) is no longer in the team's TMR connections. Reconnect the correct property in Connections &amp; Accounts to resume syncing — figures below do not reflect anything after 13 Jul.</div>
+  <div class="page-hdr"><div class="page-icon" style="background:#FFF7ED"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#E37400"/><rect x="4" y="14" width="4" height="6" rx="1" fill="white"/><rect x="10" y="10" width="4" height="10" rx="1" fill="white" opacity=".85"/><rect x="16" y="6" width="4" height="14" rx="1" fill="white" opacity=".65"/></svg></div><div><div class="page-title">Google Analytics 4</div><div class="page-sub">euronics.co.in — property 350385395</div></div></div>
+  <div class="kgrid" id="k-ga4"></div>
+  
+  <div class="cgrid"><div class="ccard"><div class="ct">Daily sessions</div><div class="cs">euronics.co.in</div><div style="position:relative;height:180px"><canvas id="c-gS"></canvas></div></div><div class="ccard"><div class="ct">Sessions by channel</div><div class="cs">Top acquisition sources</div><div style="position:relative;height:180px"><canvas id="c-gC"></canvas></div></div></div>
+    <div class="cgrid" style="margin-bottom:12px">
+    <div class="ccard">
+      <div class="ct">Top landing pages</div><div class="cs">Sessions, conversions, engagement & bounce</div>
+      <div style="overflow:auto;max-height:220px">
+        <table class="tbl"><thead><tr><th>Page</th><th>Sessions</th><th>Convs</th><th>Eng%</th><th>Bounce%</th></tr></thead>
+        <tbody id="ga4-pages-tbl"></tbody></table>
+      </div>
+    </div>
+    <div class="ccard">
+      <div class="ct">Traffic sources</div><div class="cs">Source / medium breakdown</div>
+      <div style="overflow:auto;max-height:220px">
+        <table class="tbl"><thead><tr><th>Source / Medium</th><th>Sessions</th><th>Convs</th><th>Eng%</th></tr></thead>
+        <tbody id="ga4-src-tbl"></tbody></table>
+      </div>
+    </div>
+  </div>
+<div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — GA4</div></div><div class="aip-body"><div class="ai-txt" id="ai-ga4"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('ga4','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('ga4','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('ga4','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('ga4','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('ga4')">Ask AI</button></div><div class="ask-wrap" id="ask-ga4"><input class="ask-inp" placeholder="Ask about website traffic…" id="q-ga4" onkeydown="if(event.key==='Enter')sendAsk('ga4')"><button class="ask-send" onclick="sendAsk('ga4')">Send</button></div></div></div>
+</div>
+
+<!-- SEARCH CONSOLE -->
+<div class="panel" id="p-gsc">
+  <div class="page-hdr"><div class="page-icon" style="background:#F0FDF4"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="none"/><circle cx="11" cy="11" r="5.5" fill="none" stroke="#4285F4" stroke-width="2"/><line x1="15" y1="15" x2="20" y2="20" stroke="#34A853" stroke-width="2.5" stroke-linecap="round"/></svg></div><div><div class="page-title">Search Console</div><div class="page-sub">euronics.co.in — organic web search</div></div></div>
+  <div class="kgrid" id="k-gsc"></div>
+  
+  <div class="cgrid"><div class="ccard"><div class="ct">Daily organic clicks</div><div class="cs">Google web search</div><div style="position:relative;height:180px"><canvas id="c-gcC"></canvas></div></div><div class="ccard"><div class="ct">Top search queries</div><div class="cs">Ranked by clicks</div><div style="overflow:auto;max-height:210px"><table class="tbl"><thead><tr><th>Query</th><th>Clicks</th><th>Pos.</th><th>CTR</th></tr></thead><tbody id="gscRows"></tbody></table></div></div></div>
+    <div class="ccard" style="margin-bottom:12px">
+    <div class="ct">Top pages by organic clicks</div>
+    <div class="cs">7-day · page URL, clicks, impressions, CTR, avg position</div>
+    <div style="overflow:auto;max-height:220px">
+      <table class="tbl"><thead><tr><th>Page</th><th>Clicks</th><th>Impr.</th><th>CTR</th><th>Pos.</th></tr></thead>
+      <tbody id="gsc-pages-tbl"></tbody></table>
+    </div>
+  </div>
+<div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — Search Console</div></div><div class="aip-body"><div class="ai-txt" id="ai-gsc"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('gsc','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('gsc','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('gsc','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('gsc','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('gsc')">Ask AI</button></div><div class="ask-wrap" id="ask-gsc"><input class="ask-inp" placeholder="Ask about organic search…" id="q-gsc" onkeydown="if(event.key==='Enter')sendAsk('gsc')"><button class="ask-send" onclick="sendAsk('gsc')">Send</button></div></div></div>
+</div>
+
+<!-- INSTAGRAM -->
+<div class="panel" id="p-ins">
+  <div class="page-hdr"><div class="page-icon" style="background:#FDF2F8"><svg viewBox="0 0 24 24"><defs><linearGradient id="igH" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#FED373"/><stop offset="50%" style="stop-color:#F15245"/><stop offset="100%" style="stop-color:#9B36B7"/></linearGradient></defs><rect width="24" height="24" rx="6" fill="url(#igH)"/><rect x="6" y="6" width="12" height="12" rx="3" fill="none" stroke="white" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="none" stroke="white" stroke-width="1.5"/><circle cx="16.5" cy="7.5" r="1" fill="white"/></svg></div><div><div class="page-title">Instagram</div><div class="page-sub">@euronics_india · organic reach</div></div></div>
+  <div class="kgrid" id="k-ins"></div>
+  
+  <div class="cgrid"><div class="ccard"><div class="ct">Daily profile reach</div><div class="cs">@euronics_india</div><div style="position:relative;height:180px"><canvas id="c-iR"></canvas></div></div><div class="ccard"><div class="ct">New followers daily</div><div class="cs">Follower acquisition trend</div><div style="position:relative;height:180px"><canvas id="c-iF"></canvas></div></div></div>
+  <div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — Instagram</div></div><div class="aip-body"><div class="ai-txt" id="ai-ins"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('ins','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('ins','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('ins','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('ins','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('ins')">Ask AI</button></div><div class="ask-wrap" id="ask-ins"><input class="ask-inp" placeholder="Ask about Instagram…" id="q-ins" onkeydown="if(event.key==='Enter')sendAsk('ins')"><button class="ask-send" onclick="sendAsk('ins')">Send</button></div></div></div>
+</div>
+
+<!-- LINKEDIN ORGANIC -->
+<div class="panel" id="p-lps">
+  <div class="page-hdr"><div class="page-icon" style="background:#EFF6FF"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#0A66C2"/><path d="M7 9h2.5v8H7V9zm1.25-3.75a1.45 1.45 0 110 2.9 1.45 1.45 0 010-2.9zM11 9h2.5v1.1c.4-.7 1.2-1.3 2.5-1.3 2.6 0 3 1.7 3 3.9V17H16.5v-3.5c0-.9 0-2-1.2-2S14 12.4 14 13.5V17H11V9z" fill="white"/></svg></div><div><div class="page-title">LinkedIn Organic</div><div class="page-sub">Euronics India page</div></div></div>
+  <div class="kgrid" id="k-lps"></div>
+  <div class="cgrid"><div class="ccard"><div class="ct">Daily impressions</div><div class="cs">Euronics India page</div><div style="position:relative;height:180px"><canvas id="c-lpI"></canvas></div></div><div class="ccard"><div class="ct">Engagements vs reach</div><div class="cs">Organic content performance</div><div class="leg"><span><span class="legsq" style="background:#0A66C2"></span>Engagements</span><span><span class="legsq" style="background:#60a5fa"></span>Reach</span></div><div style="position:relative;height:180px"><canvas id="c-lpE"></canvas></div></div></div>
+  <div class="aip"><div class="aip-hdr"><div class="aip-title">🤖 AI Analysis — LinkedIn Organic</div></div><div class="aip-body"><div class="ai-txt" id="ai-lps"></div><div class="ai-acts"><button class="ai-act" onclick="aiAct('lps','analyse')">Analyse performance</button><button class="ai-act" onclick="aiAct('lps','working')">Top 3 working</button><button class="ai-act" onclick="aiAct('lps','notworking')">Top 3 not working</button><button class="ai-act" onclick="aiAct('lps','improve')">Top 3 to improve</button><button class="ai-act" onclick="toggleAsk('lps')">Ask AI</button></div><div class="ask-wrap" id="ask-lps"><input class="ask-inp" placeholder="Ask about LinkedIn Organic…" id="q-lps" onkeydown="if(event.key==='Enter')sendAsk('lps')"><button class="ask-send" onclick="sendAsk('lps')">Send</button></div></div></div>
+</div>
+
+<!-- /layout -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// EURONICS DIGITAL COMMAND CENTRE
+// 90-day BANK loaded once. Filters slice. Daily 11am delta sync.
+// ═══════════════════════════════════════════════════════════════
+let BANK = {}; // populated by fetchBank() before init runs — see bottom of script
+
+const SYNC_TIME = '13 Jul 2026, 11:00 AM';
+const PERIOD_DAYS = {'7':7,'15':15,'30':30,'90':90};
+let period = '7', activeTab = 'amazon', chartObjs = {};
+let customFrom = null, customTo = null; // 'YYYY-MM-DD' when custom range active
+// These are now set from the fetched bank.json (backend writes them each sync) rather than hardcoded.
+let BANK_MIN_DATE = '2026-05-12';
+let BANK_MAX_DATE = '2026-08-11';
+
+function slice(key, n){
+  const r = BANK[key]||[];
+  if ((period === 'custom' || period === 'mtd') && customFrom && customTo) {
+    return r.filter(row => row[0] >= customFrom && row[0] <= customTo);
+  }
+  return n>=90 ? r : r.slice(-n);
+}
+
+function D(){
+  const n = PERIOD_DAYS[period]||7;
+  return {
+    amz:slice('amz',n), amz_camps:BANK.amz_camps_full||[],
+    gads:slice('gads',n), gads_camps:BANK.gads_camps||[],
+    meta:slice('meta',n), seller:slice('seller',n),
+    ga4:slice('ga4_daily',n), ga4_chan:BANK.ga4_chan||[], ga4_pages:BANK.ga4_pages||[], ga4_srcmed:BANK.ga4_srcmed||[],
+    gsc:slice('gsc_daily',n), gsc_q:BANK.gsc_q||[], gsc_pages:BANK.gsc_pages||[],
+    shopify:slice('shopify',n), ins:slice('ins',n), lps:slice('lps',n),
+    fba:BANK.fba_inventory||[],
+    lads:slice('lads',n)
+  };
+}
+
+// ── FORMATTERS ──
+const fN = n => { if(n===null||n===undefined||n===''||isNaN(+n))return'—'; const v=+n; if(v>=1e7)return(v/1e7).toFixed(2)+'Cr'; if(v>=1e5)return(v/1e5).toFixed(1)+'L'; if(v>=1e3)return(v/1e3).toFixed(1)+'K'; return Math.round(v)+''; };
+const fC = n => (n!==null&&n!==undefined&&n!==''&&+n)?'₹'+fN(+n):'—';
+const fP = (n,m=100) => (!n&&+n!==0)||n===''?'—':(+n*m).toFixed(1)+'%';
+const fD = (n,d=2) => (!n&&+n!==0)||n===''?'—':(+n).toFixed(d);
+const rS = (rows,i) => rows.reduce((s,r)=>s+(+r[i]||0),0);
+const rA = (rows,i) => { const v=rows.filter(r=>r[i]!=null&&r[i]!==''&&!isNaN(+r[i])); return v.length?v.reduce((s,r)=>s+(+r[i]||0),0)/v.length:0; };
+const dl = r => String(r[0]).slice(5);
+const sec = t => '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink4);margin:16px 0 4px;padding-left:2px;grid-column:1/-1">'+t+'</div>';
+
+// ── CHARTS ──
+function dc(id){ if(chartObjs[id]){chartObjs[id].destroy();delete chartObjs[id];} }
+const xOpts = {ticks:{color:'#9CA3AF',font:{size:10},maxTicksLimit:9,maxRotation:40},grid:{display:false}};
+const yOpts = cb => ({ticks:{color:'#9CA3AF',font:{size:10},callback:cb||(v=>fN(v))},grid:{color:'rgba(0,0,0,0.05)'},beginAtZero:true});
+function mkLine(id,labels,ds,yf){ dc(id); const c=document.getElementById(id); if(!c)return; chartObjs[id]=new Chart(c,{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:xOpts,y:yOpts(yf)}}}); }
+function mkDual(id,labels,d1,d2,c1,c2,f1,f2){ dc(id); const el=document.getElementById(id); if(!el)return; chartObjs[id]=new Chart(el,{type:'line',data:{labels,datasets:[{data:d1,borderColor:c1,backgroundColor:c1+'18',tension:.35,pointRadius:2,fill:true,yAxisID:'y'},{data:d2,borderColor:c2,backgroundColor:c2+'18',tension:.35,pointRadius:2,fill:true,borderDash:[4,3],yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:xOpts,y:Object.assign({},yOpts(f1),{position:'left'}),y1:Object.assign({},yOpts(f2),{position:'right',grid:{display:false}})}}}); }
+function mkBar(id,labels,data,color,horiz){ dc(id); const el=document.getElementById(id); if(!el)return; chartObjs[id]=new Chart(el,{type:'bar',data:{labels,datasets:[{data,backgroundColor:color,borderRadius:4,maxBarThickness:20}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:horiz?'y':'x',plugins:{legend:{display:false}},scales:{x:Object.assign({},xOpts,{grid:horiz?{color:'rgba(0,0,0,0.05)'}:{display:false},ticks:Object.assign({},xOpts.ticks,{callback:horiz?(v=>fN(v)):undefined})}),y:Object.assign({},yOpts(),{grid:horiz?{display:false}:{color:'rgba(0,0,0,0.05)'},ticks:Object.assign({},yOpts().ticks,{callback:v=>typeof v==='string'&&v.length>26?v.slice(0,24)+'…':horiz?v:fN(v)})})}}}); }
+
+// ── SPOTLIGHT (shared popup modal) ──
+const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const AVG_METRIC_WORDS=['rate','ctr','acos','roas','cpc','cpl','aov','cvr','position','frequency','eng.','ratio','avg','cpp','cpuc'];
+function isAvgMetric(label){ const l=label.toLowerCase(); return AVG_METRIC_WORDS.some(w=>l.includes(w)); }
+function monthKey(d){ return String(d).slice(0,7); }
+function monthLabel(k){ const p=k.split('-'); return MONTH_NAMES[(+p[1])-1]+' '+p[0].slice(2); }
+function aggregateMonthly(rows,col,isAvg){
+  const buckets={};
+  rows.forEach(r=>{ const k=monthKey(r[0]); const v=+r[col]; if(isNaN(v))return; (buckets[k]=buckets[k]||[]).push(v); });
+  const keys=Object.keys(buckets).sort();
+  return { labels:keys.map(monthLabel), values:keys.map(k=>{ const arr=buckets[k]; return isAvg? arr.reduce((a,b)=>a+b,0)/arr.length : arr.reduce((a,b)=>a+b,0); }) };
+}
+function isMonthlyView(rows){
+  if(period==='90') return true;
+  if(period==='custom' && rows.length){
+    const span=(new Date(rows[rows.length-1][0])-new Date(rows[0][0]))/86400000;
+    return span>31;
+  }
+  return false;
+}
+function showSpot(tab,label,rows,col,color,yf){
+  const t=document.getElementById('trendModalTitle'), s=document.getElementById('trendModalSub');
+  if(t)t.textContent='📈 '+label;
+  const monthly=isMonthlyView(rows);
+  dc('trendModalCanvas');
+  if(monthly){
+    const agg=aggregateMonthly(rows,col,isAvgMetric(label));
+    if(s)s.textContent='Monthly trend — '+agg.labels.length+' month'+(agg.labels.length!==1?'s':'')+(isAvgMetric(label)?' (daily average per month)':' (summed per month)');
+    mkLine('trendModalCanvas',agg.labels,[{data:agg.values,borderColor:color,backgroundColor:color+'18',tension:.35,pointRadius:4,fill:true}],yf);
+  }else{
+    if(s)s.textContent='Daily trend — '+rows.length+' day'+(rows.length!==1?'s':'');
+    mkLine('trendModalCanvas',rows.map(dl),[{data:rows.map(r=>+r[col]||0),borderColor:color,backgroundColor:color+'18',tension:.35,pointRadius:3,fill:true}],yf);
+  }
+  openTrendModal();
+}
+function openTrendModal(){ const m=document.getElementById('trendModal'); if(m)m.classList.add('show'); }
+function closeTrendModal(){ const m=document.getElementById('trendModal'); if(m)m.classList.remove('show'); dc('trendModalCanvas'); }
+function clickKpi(tab,label,col,color){
+  const m={amazon:'amz',gads:'gads',meta:'meta',ga4:'ga4',gsc:'gsc',shopify:'shopify',seller:'seller',ins:'ins',lps:'lps',fba:'fba',lads:'lads'};
+  const rows=D()[m[tab]]||[];
+  document.querySelectorAll('#k-'+tab+' .kcard').forEach(el=>el.classList.remove('on'));
+  const el=document.getElementById('kc-'+tab+'-'+col); if(el)el.classList.add('on');
+  // Columns whose raw values are fractions (0-1) displayed as % on the card — must scale x100 on the trend chart too
+  const FRACTION_PCT_COLS={amazon:[6],gads:[4],seller:[4,9],ga4:[4,5],gsc:[3],lps:[4]};
+  // Columns already stored pre-scaled as percent (e.g. 1.97 meaning 1.97%) — need '%' suffix but NOT x100
+  const PRESCALED_PCT_COLS={meta:[5]};
+  const isFractionPct=(FRACTION_PCT_COLS[tab]||[]).includes(col);
+  const isPrescaledPct=(PRESCALED_PCT_COLS[tab]||[]).includes(col);
+  const cur=['spend','sales','revenue','cpl','cpc','cpp','cpuc','aov','cost','value','b2b'].some(x=>label.toLowerCase().includes(x)) && !label.toLowerCase().includes('unit');
+  const yf=isFractionPct?(v=>(v*100).toFixed(1)+'%'):isPrescaledPct?(v=>v.toFixed(2)+'%'):(cur?(v=>fC(v)):undefined);
+  showSpot(tab,label,rows,col,color,yf);
+}
+function kcard(tab,label,val,sub,color,rows,col,yf){
+  const id='kc-'+tab+'-'+col;
+  const click=rows&&rows.length&&col!==undefined;
+  const oc=click?"clickKpi('"+tab+"','"+label+"',"+col+",'"+color+"')":'';
+  return '<div class="kcard" id="'+id+'" style="--kc:'+color+'" onclick="'+oc+'" title="'+(click?'Click for trend':'')+'"><div class="kl">'+label+'</div><div class="kv">'+val+'</div>'+(sub?'<div class="ks">'+sub+'</div>':'')+'</div>';
+}
+
+
+// ── RENDER ──
+function render(){
+  const d=D();
+
+  // AMAZON ADS [date,spend,sales,orders,impr,clicks,acos,roas] — CTR/CPC computed
+  const aR=d.amz, aSp=rS(aR,1),aSa=rS(aR,2),aO=rS(aR,3),aI=rS(aR,4),aC=rS(aR,5),aAc=rA(aR,6),aRo=aSp>0?aSa/aSp:0,aCtr=aI>0?aC/aI:0,aCpc=aC>0?aSp/aC:0;
+  document.getElementById('k-amazon').innerHTML=
+    sec('Revenue & Returns')+
+    kcard('amazon','Ad spend',fC(aSp),'Total ₹ spent','#FF9900',aR,1)+
+    kcard('amazon','Ad sales',fC(aSa),'Attributed revenue','#34D399',aR,2)+
+    kcard('amazon','Orders',fN(aO),'Attributed orders','#1A7A7A',aR,3)+
+    kcard('amazon','ROAS',fD(aRo,2)+'x','Return on ad spend','#059669',aR,7)+
+    sec('Efficiency')+
+    kcard('amazon','ACOS',fP(aAc),'Ad cost of sales','#DC2626',aR,6)+
+    kcard('amazon','CPC',fC(aCpc),'Cost per click','#F59E0B',null,undefined)+
+    kcard('amazon','CTR',fD(aCtr*100,2)+'%','Click-through rate','#8B5CF6',null,undefined)+
+    sec('Reach')+
+    kcard('amazon','Clicks',fN(aC),'Ad clicks','#6366F1',aR,5)+
+    kcard('amazon','Impressions',fN(aI),'Total views','#60A5FA',aR,4)+
+    kcard('amazon','Order CVR',fP(aC>0?aO/aC:0),'Orders/clicks','#34A853',null,undefined);
+  const aL=aR.map(dl);
+  mkDual('c-amzSS',aL,aR.map(r=>+r[1]),aR.map(r=>+r[2]),'#FF9900','#34D399',v=>fC(v),v=>fC(v));
+  mkLine('c-amzROAS',aL,[{data:aR.map(r=>+r[7]||0),borderColor:'#34D399',backgroundColor:'#34D39918',tension:.35,pointRadius:2,fill:true}]);
+  mkLine('c-amzACOS',aL,[{data:aR.map(r=>(+r[6]||0)*100),borderColor:'#F59E0B',backgroundColor:'#F59E0B15',tension:.35,pointRadius:2,fill:true}],v=>v.toFixed(1)+'%');
+  const acp=(d.amz_camps||[]).slice(0,15).filter(r=>+r[1]>0);
+  const acpt=document.getElementById('amz-camps-tbl');
+  if(acpt)acpt.innerHTML=acp.map(r=>'<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r[0]+'</td><td>'+fC(+r[1])+'</td><td>'+fC(+r[2])+'</td><td>'+fN(r[3])+'</td><td>'+fP(+r[4])+'</td><td>'+fD(+r[5],1)+'x</td><td>'+fN(r[7])+'</td></tr>').join('');
+
+  // GOOGLE ADS [date,cost,clicks,impr,ctr,convs,cpl,cpc,all_convs,conv_val,roas] — lead-gen: leads & CPL are the primary KPIs
+  const gR=d.gads, gSp=rS(gR,1),gC=rS(gR,2),gI=rS(gR,3),gCtr=rA(gR,4),gCv=rS(gR,5),gCpl=gCv>0?gSp/gCv:0,gAll=rS(gR,8),gVal=rS(gR,9);
+  document.getElementById('k-gads').innerHTML=
+    sec('Lead Generation')+
+    kcard('gads','Leads (conversions)',fD(gCv,1),'Lead form submits','#059669',gR,5)+
+    kcard('gads','Cost per lead',fC(gCpl),'Lower is better','#DC2626',gR,6)+
+    kcard('gads','All conversions',fD(gAll,1),'Incl. micro-conversions','#34A853',gR,8)+
+    sec('Spend & Assigned Value')+
+    kcard('gads','Ad spend',fC(gSp),'','#4285F4',gR,1)+
+    kcard('gads','Est. conv. value',fC(gVal),"Google's assigned value/lead — not confirmed deal revenue",'#60A5FA',gR,9)+
+    sec('Traffic')+
+    kcard('gads','Clicks',fN(gC),'','#6366F1',gR,2)+
+    kcard('gads','Impressions',fN(gI),'','#FBBC04',gR,3)+
+    kcard('gads','CTR',fP(gCtr),'','#8B5CF6',gR,4)+
+    kcard('gads','Avg CPC',fC(rA(gR,7)),'','#F59E0B',gR,7);
+  mkDual('c-gadsSC',gR.map(dl),gR.map(r=>+r[5]),gR.map(r=>+r[1]),'#059669','#4285F4',undefined,v=>fC(v));
+  const gcp=(d.gads_camps||[]).filter(r=>+r[1]>0).slice(0,12);
+  const gcpt=document.getElementById('gads-camps-tbl');
+  if(gcpt)gcpt.innerHTML=gcp.map(r=>'<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+String(r[0]).replace('LNF_Euronics_','').replace(/_/g,' ')+'</td><td>'+fC(+r[1])+'</td><td>'+fN(r[2])+'</td><td>'+fD(+r[4],1)+'</td><td>'+fC(+r[6])+'</td></tr>').join('');
+
+  // META [date,spend,impr,clicks,reach,ctr,cpc,freq,uclicks,cpuc,cpp,inquiries,inq_cost] — performance marketing: conversions first
+  const mR=d.meta, mSp=rS(mR,1),mI=rS(mR,2),mC=rS(mR,3),mRe=rS(mR,4),mCtr=rA(mR,5),mCpc=rA(mR,6),mF=rA(mR,7),mU=rS(mR,8),mCpuc=rA(mR,9),mCpp=rA(mR,10);
+  const mInq=rS(mR,11), mInqCost=rS(mR,12), mCpi=mInq>0?mInqCost/mInq:0, mInqRate=mC>0?mInq/mC:0;
+  const mPurch=rS(mR,13), mPurchVal=rS(mR,14), mRoas=mSp>0?mPurchVal/mSp:0, mAov=mPurch>0?mPurchVal/mPurch:0;
+  document.getElementById('k-meta').innerHTML=
+    sec('Purchases & ROAS — pixel-tracked e-commerce')+
+    kcard('meta','Purchases',fN(mPurch),'Website purchases via pixel','#059669',mR,13)+
+    kcard('meta','Purchase value',fC(mPurchVal),'Revenue attributed to Meta ads','#10B981',mR,14)+
+    kcard('meta','ROAS',fD(mRoas,2)+'x','Purchase value / spend','#34D399',mR,15)+
+    kcard('meta','AOV (Meta-driven)',fC(mAov),'Avg order value from these purchases','#6EE7B7',null,undefined)+
+    sec('Lead Conversions — "Inquiry Now" pixel')+
+    kcard('meta','Inquiries',fN(mInq),'Real conversion events','#1877F2',mR,11)+
+    kcard('meta','Cost per inquiry',fC(mCpi),'Lower is better','#0EA5E9',mR,12)+
+    kcard('meta','Inquiry rate',fD(mInqRate*100,2)+'%','Inquiries / clicks','#3B82F6',null,undefined)+
+    sec('Spend & Reach')+
+    kcard('meta','Ad spend',fC(mSp),'','#8B5CF6',mR,1)+
+    kcard('meta','Reach',fN(mRe),'Unique people','#60A5FA',mR,4)+
+    kcard('meta','CPP',fC(mCpp),'Cost per 1K reached','#A78BFA',mR,10)+
+    kcard('meta','Frequency',fD(mF,2),'Avg exposures/person','#6366F1',mR,7)+
+    sec('Traffic & Engagement')+
+    kcard('meta','Impressions',fN(mI),'','#818CF8',mR,2)+
+    kcard('meta','Clicks',fN(mC),'','#EC4899',mR,3)+
+    kcard('meta','CTR',fD(mCtr,2)+'%','','#F472B6',mR,5)+
+    kcard('meta','CPC',fC(mCpc),'','#F43F5E',mR,6)+
+    sec('Unique Reach')+
+    kcard('meta','Unique clicks',fN(mU),'','#F59E0B',mR,8)+
+    kcard('meta','CpUC',fC(mCpuc),'Cost per unique click','#D97706',mR,9);
+  const mL=mR.map(dl);
+  mkDual('c-mS',mL,mR.map(r=>+r[11]||0),mR.map(r=>+r[1]||0),'#1877F2','#8B5CF6',undefined,v=>fC(v));
+  mkDual('c-mRI',mL,mR.map(r=>+r[4]),mR.map(r=>(+r[2]||0)/100),'#60A5FA','#818CF8');
+  mkDual('c-mFreq',mL,mR.map(r=>+r[5]||0),mR.map(r=>+r[7]||0),'#8B5CF6','#F59E0B',v=>v.toFixed(2)+'%',v=>v.toFixed(2)+'x');
+  mkDual('c-mRoas',mL,mR.map(r=>+r[14]||0),mR.map(r=>+r[15]||0),'#10B981','#34D399',v=>fC(v),v=>v.toFixed(2)+'x');
+
+  // SELLER [date,sales,orders,sessions,cvr,pv,b2b_units,b2b_sales,refunded,refund_rate]
+  const sR=d.seller, sRev=rS(sR,1),sO=rS(sR,2),sSe=rS(sR,3),sCvr=rA(sR,4),sAov=sO>0?sRev/sO:0,sB2u=rS(sR,6),sB2s=rS(sR,7),sPv=rS(sR,5),sRf=rS(sR,8),sRfr=rA(sR,9);
+  document.getElementById('k-seller').innerHTML=
+    sec('Revenue')+
+    kcard('seller','Total sales',fC(sRev),'Ordered product sales (matches Seller Central)','#FF9900',sR,1)+
+    kcard('seller','Orders',fN(sO),'','#F97316',sR,2)+
+    kcard('seller','AOV',fC(sAov),'Avg order value','#FB923C',null,undefined)+
+    sec('B2B Performance')+
+    kcard('seller','B2B sales',fC(sB2s),'Business revenue','#0A66C2',sR,7)+
+    kcard('seller','B2B units',fN(sB2u),'Units to businesses','#1D4ED8',sR,6)+
+    kcard('seller','B2B mix',fP(sRev>0?sB2s/sRev:0),'% of total revenue','#3B82F6',null,undefined)+
+    sec('Traffic & Conversion')+
+    kcard('seller','Sessions',fN(sSe),'Listing visits','#60A5FA',sR,3)+
+    kcard('seller','Page views',fN(sPv),'Product page views','#818CF8',sR,5)+
+    kcard('seller','Conv. rate',fP(sCvr),'Unit session %','#34A853',sR,4)+
+    sec('Quality')+
+    kcard('seller','Returns',fN(sRf),'Units refunded','#DC2626',sR,8)+
+    kcard('seller','Refund rate',fP(sRfr),'% units returned','#EF4444',sR,9);
+  const sL=sR.map(dl);
+  mkLine('c-slR',sL,[{data:sR.map(r=>+r[1]),borderColor:'#FF9900',backgroundColor:'#FF990018',tension:.35,pointRadius:2,fill:true}],v=>fC(v));
+  mkDual('c-slOS',sL,sR.map(r=>+r[2]),sR.map(r=>(+r[3]||0)/100),'#FF9900','#60A5FA');
+  mkDual('c-slB2b',sL,sR.map(r=>+r[7]||0),sR.map(r=>+r[6]||0),'#0A66C2','#60A5FA',v=>fC(v),undefined);
+
+  // FBA [asin,name,total,fulfillable,inbound_working,inbound_shipped,inbound_receiving,reserved,unfulfillable,fc_processing]
+  const fR=d.fba;
+  const fTotal=rS(fR,2), fFulf=rS(fR,3), fInbW=rS(fR,4), fInbS=rS(fR,5), fInbR=rS(fR,6), fInbAll=fInbW+fInbS+fInbR, fRes=rS(fR,7), fUnf=rS(fR,8), fFcp=rS(fR,9);
+  const fLow=fR.filter(r=>+r[3]<=20).sort((a,b)=>(+a[3])-(+b[3]));
+  const fZero=BANK.fba_zero_stock_count||0, fTotalSkus=BANK.fba_total_skus||fR.length;
+  const fActive=fR.length;
+  document.getElementById('k-fba').innerHTML=
+    sec('Stock On Hand')+
+    kcard('fba','Fulfillable units',fN(fFulf),'Ready to ship now','#146EB4',fR,3)+
+    kcard('fba','Total units',fN(fTotal),'All statuses combined','#232F3E',fR,2)+
+    kcard('fba','Active SKUs',fN(fActive),'With any inventory','#FF9900',null,undefined)+
+    kcard('fba','Zero-stock SKUs',fN(fZero),'Out of '+fTotalSkus+' total listings','#DC2626',null,undefined)+
+    sec('Inbound Pipeline')+
+    kcard('fba','Inbound total',fN(fInbAll),'Working+shipped+receiving','#0EA5E9',fR,4)+
+    kcard('fba','Inbound shipped',fN(fInbS),'On the way to FCs','#38BDF8',fR,5)+
+    kcard('fba','Inbound receiving',fN(fInbR),'Being checked in','#7DD3FC',fR,6)+
+    sec('Reserved & Issues')+
+    kcard('fba','Reserved',fN(fRes),'Held for pending orders','#8B5CF6',fR,7)+
+    kcard('fba','Unfulfillable',fN(fUnf),'Damaged/defective/expired','#DC2626',fR,8)+
+    kcard('fba','FC processing',fN(fFcp),'Stuck in receive queue','#F59E0B',fR,9)+
+    kcard('fba','Low-stock alerts',fN(fLow.length),'Fulfillable ≤ 20 units','#EF4444',null,undefined);
+  const fTop=fR.slice().sort((a,b)=>(+b[3])-(+a[3])).slice(0,10);
+  mkBar('c-fbaTop',fTop.map(r=>r[0]),fTop.map(r=>+r[3]),'#146EB4',true);
+  dc('c-fbaSplit');
+  const fSplitEl=document.getElementById('c-fbaSplit');
+  if(fSplitEl){ chartObjs['c-fbaSplit']=new Chart(fSplitEl,{type:'doughnut',data:{labels:['Fulfillable','Inbound','Reserved','Unfulfillable/FC proc.'],datasets:[{data:[fFulf,fInbAll,fRes,fUnf+fFcp],backgroundColor:['#146EB4','#38BDF8','#8B5CF6','#DC2626'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10.5},color:'#4B5563'}}}}}); }
+  const fLowSub=document.getElementById('fba-low-sub'); if(fLowSub)fLowSub.textContent=fLow.length+' SKUs at or under 20 fulfillable units';
+  document.getElementById('fba-low-rows').innerHTML=fLow.map(r=>{const inb=(+r[4]||0)+(+r[5]||0)+(+r[6]||0);const rowColor=+r[3]===0?'#FEF2F2':'';return '<tr style="background:'+rowColor+'"><td>'+r[0]+'</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r[1]+'</td><td>'+fN(r[2])+'</td><td style="color:'+(+r[3]===0?'#DC2626':'#D97706')+';font-weight:700">'+fN(r[3])+'</td><td>'+fN(inb)+'</td><td>'+fN(r[7])+'</td><td>'+fN(r[8])+'</td></tr>';}).join('');
+  const fAll=fR.slice().sort((a,b)=>(+b[2])-(+a[2]));
+  document.getElementById('fba-all-rows').innerHTML=fAll.map(r=>'<tr><td>'+r[0]+'</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r[1]+'</td><td><b>'+fN(r[2])+'</b></td><td>'+fN(r[3])+'</td><td>'+fN(r[4])+'</td><td>'+fN(r[5])+'</td><td>'+fN(r[6])+'</td><td>'+fN(r[7])+'</td><td>'+fN(r[8])+'</td><td>'+fN(r[9])+'</td></tr>').join('');
+
+  // SHOPIFY [date,rev,orders]
+  const hR=d.shopify, hRev=rS(hR,1),hO=rS(hR,2),hAov=hO>0?hRev/hO:0;
+  document.getElementById('k-shopify').innerHTML=
+    sec('Sales')+
+    kcard('shopify','Gross revenue',fC(hRev),'','#96BF48',hR,1)+
+    kcard('shopify','Orders',fN(hO),'','#78A832',hR,2)+
+    kcard('shopify','AOV',fC(hAov),'Avg order value','#4D7C0F',null,undefined);
+  mkLine('c-shR',hR.map(dl),[{data:hR.map(r=>+r[1]),borderColor:'#96BF48',backgroundColor:'#96BF4818',tension:.35,pointRadius:2,fill:true}],v=>fC(v));
+  mkBar('c-shO',hR.map(dl),hR.map(r=>+r[2]),'#96BF48');
+
+  // GA4 [date,sessions,users,new,eng,bounce,convs,dur,pps]
+  const g4=d.ga4, g4ch=d.ga4_chan, g4pg=d.ga4_pages, g4sr=d.ga4_srcmed;
+  const g4S=rS(g4,1),g4U=rS(g4,2),g4N=rS(g4,3),g4E=rA(g4,4),g4B=rA(g4,5),g4Cv=rS(g4,6),g4Du=rA(g4,7),g4Pp=rA(g4,8);
+  document.getElementById('k-ga4').innerHTML=
+    sec('Traffic')+
+    kcard('ga4','Sessions',fN(g4S),'','#E37400',g4,1)+
+    kcard('ga4','Active users',fN(g4U),'','#F97316',g4,2)+
+    kcard('ga4','New users',fN(g4N),'','#FB923C',g4,3)+
+    kcard('ga4','Returning',fP(g4S>0?(g4S-g4N)/g4S:0),'Returning %','#F59E0B',null,undefined)+
+    sec('Engagement')+
+    kcard('ga4','Engagement rate',fP(g4E),'','#1A7A7A',g4,4)+
+    kcard('ga4','Bounce rate',fP(g4B),'','#DC2626',g4,5)+
+    kcard('ga4','Avg session',fD(g4Du,0)+'s','Time on site','#8B5CF6',g4,7)+
+    kcard('ga4','Pages/session',fD(g4Pp,1),'','#6366F1',g4,8)+
+    sec('Conversions')+
+    kcard('ga4','Conversions',fN(g4Cv),'Goal completions','#059669',g4,6);
+  mkLine('c-gS',g4.map(dl),[{data:g4.map(r=>+r[1]),borderColor:'#E37400',backgroundColor:'#E3740018',tension:.35,pointRadius:2,fill:true}]);
+  mkBar('c-gC',g4ch.slice(0,8).map(r=>String(r[0])),g4ch.slice(0,8).map(r=>+r[1]),'#E37400',true);
+  const g4pt=document.getElementById('ga4-pages-tbl');
+  if(g4pt)g4pt.innerHTML=g4pg.map(r=>'<tr><td>'+(String(r[0]).replace('https://euronics.co.in','').slice(0,40)||'/')+'</td><td>'+fN(r[1])+'</td><td>'+fN(r[2])+'</td><td>'+fP(+r[3])+'</td><td>'+fP(+r[4])+'</td></tr>').join('');
+  const g4st=document.getElementById('ga4-src-tbl');
+  if(g4st)g4st.innerHTML=g4sr.map(r=>'<tr>'+r.map((c,i)=>'<td>'+(i===0?c:fN(c))+'</td>').join('')+'</tr>').join('');
+
+  // GSC [date,clicks,impr,ctr,pos]
+  const cR=d.gsc, cQ=d.gsc_q, cPg=d.gsc_pages;
+  const cC=rS(cR,1),cI=rS(cR,2),cCtr=rA(cR,3),cPos=rA(cR,4);
+  const cLow=(cQ||[]).filter(r=>+r[2]>500&&+r[3]<0.02).length;
+  document.getElementById('k-gsc').innerHTML=
+    sec('Organic Performance')+
+    kcard('gsc','Organic clicks',fN(cC),'','#34A853',cR,1)+
+    kcard('gsc','Impressions',fN(cI),'Search appearances','#4ADE80',cR,2)+
+    kcard('gsc','Avg CTR',fP(cCtr),'','#1A7A7A',cR,3)+
+    kcard('gsc','Avg position',fD(cPos,1),'Lower is better','#F59E0B',cR,4)+
+    sec('Opportunities')+
+    kcard('gsc','Low CTR queries',fN(cLow),'High impr, CTR <2%','#DC2626',null,undefined)+
+    kcard('gsc','Top query',(cQ||[])[0]?'"'+String(cQ[0][0]).slice(0,20)+'"':'—','Most clicked','#059669',null,undefined);
+  mkLine('c-gcC',cR.map(dl),[{data:cR.map(r=>+r[1]),borderColor:'#34A853',backgroundColor:'#34A85318',tension:.35,pointRadius:2,fill:true}]);
+  const cqt=document.getElementById('gscRows');
+  if(cqt)cqt.innerHTML=(cQ||[]).map(r=>'<tr><td>'+r[0]+'</td><td>'+fN(r[1])+'</td><td>'+fN(r[2])+'</td><td>'+fD(r[4]||r[3],1)+'</td><td>'+fP(r[3]||r[2])+'</td></tr>').join('');
+  const cpt=document.getElementById('gsc-pages-tbl');
+  if(cpt)cpt.innerHTML=(cPg||[]).map(r=>'<tr><td>'+(String(r[0]).replace('https://euronics.co.in','').slice(0,40)||'/')+'</td><td>'+fN(r[1])+'</td><td>'+fN(r[2])+'</td><td>'+fP(+r[3])+'</td><td>'+fD(+r[4],1)+'</td></tr>').join('');
+
+  // INSTAGRAM [date,reach,new_followers,total_followers]
+  const iR=d.ins, iRe=rS(iR,1),iNf=rS(iR,2),iTf=iR.length?(+iR[iR.length-1][3]||0):0;
+  document.getElementById('k-ins').innerHTML=
+    sec('Reach & Growth')+
+    kcard('ins','Profile reach',fN(iRe),'','#E1306C',iR,1)+
+    kcard('ins','Total followers',fN(iTf),'Current count','#F43F5E',null,undefined)+
+    kcard('ins','New followers',fN(iNf),'Gained this period','#FB7185',iR,2)+
+    kcard('ins','Growth rate',fP(iTf>0?iNf/iTf:0),'New/total','#F97316',null,undefined)+
+    sec('Averages')+
+    kcard('ins','Daily avg reach',fN(Math.round(iRe/(iR.length||1))),'','#FCA5A5',null,undefined)+
+    kcard('ins','Peak day reach',fN(Math.max.apply(null,iR.map(r=>+r[1]||0))),'Best single day','#FBBF24',null,undefined);
+  mkLine('c-iR',iR.map(dl),[{data:iR.map(r=>+r[1]),borderColor:'#E1306C',backgroundColor:'#E1306C18',tension:.35,pointRadius:2,fill:true}]);
+  mkBar('c-iF',iR.map(dl),iR.map(r=>+r[2]),'#F43F5E');
+
+  // LINKEDIN PAGES [date,impr,eng,reach,eng_rate,new_followers,clicks]
+  const lR=d.lps, lI=rS(lR,1),lE=rS(lR,2),lRe=rS(lR,3),lEr=rA(lR,4),lNf=lR.reduce((s,r)=>s+(isNaN(+r[5])?0:+r[5]),0),lCl=rS(lR,6);
+  document.getElementById('k-lps').innerHTML=
+    sec('Reach & Visibility')+
+    kcard('lps','Impressions',fN(lI),'','#0A66C2',lR,1)+
+    kcard('lps','Reach',fN(lRe),'Unique viewers','#60A5FA',lR,3)+
+    kcard('lps','Engagements',fN(lE),'Likes+comments+shares','#1D4ED8',lR,2)+
+    kcard('lps','Eng. rate',fP(lEr),'','#6366F1',lR,4)+
+    sec('Actions')+
+    kcard('lps','Clicks',fN(lCl),'Link clicks','#3B82F6',lR,6)+
+    kcard('lps','Click rate',fP(lI>0?lCl/lI:0),'Clicks/impr','#818CF8',null,undefined)+
+    kcard('lps','New followers',fN(lNf),'Gained this period','#A78BFA',lR,5)+
+    kcard('lps','Total followers',fN(BANK.lps_total_followers||0),'As of '+(BANK.lps_total_followers_date||''),'#059669',null,undefined);
+  const lL=lR.map(dl);
+  mkLine('c-lpI',lL,[{data:lR.map(r=>+r[1]),borderColor:'#0A66C2',backgroundColor:'#0A66C218',tension:.35,pointRadius:2,fill:true}]);
+  mkDual('c-lpE',lL,lR.map(r=>+r[2]),lR.map(r=>+r[3]),'#0A66C2','#60A5FA');
+
+  // LINKEDIN ADS [date,spend,impressions,clicks,reach,landing_clicks,conversions]
+  const lqR=d.lads, lqSp=rS(lqR,1), lqI=rS(lqR,2), lqC=rS(lqR,3), lqRe=rS(lqR,4), lqLc=rS(lqR,5), lqCv=rS(lqR,6);
+  const lqCtr=lqI>0?lqC/lqI:0, lqCpc=lqC>0?lqSp/lqC:0, lqActiveDays=lqR.filter(r=>+r[1]>0).length;
+  document.getElementById('k-lads').innerHTML= lqActiveDays===0 ?
+    sec('Status')+
+    kcard('lads','Active spend','₹0','No spend in this period','#DC2626',null,undefined)+
+    kcard('lads','Accounts','3 connected','No activity in this window','#F59E0B',null,undefined) :
+    sec('Spend & Reach')+
+    kcard('lads','Total spend',fC(lqSp),lqActiveDays+' active day'+(lqActiveDays!==1?'s':''),'#0A66C2',lqR,1)+
+    kcard('lads','Impressions',fN(lqI),'','#60A5FA',lqR,2)+
+    kcard('lads','Reach',fN(lqRe),'Unique members','#3B82F6',lqR,4)+
+    kcard('lads','Clicks',fN(lqC),'','#1D4ED8',lqR,3)+
+    sec('Efficiency')+
+    kcard('lads','CTR',fD(lqCtr*100,2)+'%','','#8B5CF6',null,undefined)+
+    kcard('lads','Avg CPC',fC(lqCpc),'Highly volatile — see chart','#F59E0B',null,undefined)+
+    sec('Conversions')+
+    kcard('lads','Landing page clicks',fN(lqLc),'','#6366F1',lqR,5)+
+    kcard('lads','Conversions',fN(lqCv),'Zero recorded to date','#DC2626',lqR,6);
+  if(lqActiveDays>0){
+    const lqL=lqR.map(dl);
+    mkDual('c-ladsSC',lqL,lqR.map(r=>+r[1]),lqR.map(r=>+r[3]),'#0A66C2','#1D4ED8',v=>fC(v),undefined);
+    mkLine('c-ladsCPC',lqL,[{data:lqR.map(r=>+r[3]>0?(+r[1]/+r[3]):0),borderColor:'#F59E0B',backgroundColor:'#F59E0B18',tension:.35,pointRadius:3,fill:true}],v=>fC(v));
+  }
+
+  genAllAI();
+}
+
+// ── AI (pre-generated by the daily backend sync — no live API calls from the browser) ──
+// The GitHub Actions job writes BANK.aiInsights[tab][type] once a day using the real Anthropic key,
+// kept server-side. This page only ever reads that JSON — nothing here can leak a credential.
+function setAI(id,t){ const el=document.getElementById(id); if(el)el.innerHTML=t; }
+const pLabel=()=>period==='7'?'7 days':period==='15'?'15 days':period==='30'?'30 days':period==='mtd'?('month to date, '+customFrom+' to '+customTo):period==='custom'?(customFrom+' to '+customTo):'3 months';
+const AI_TAB_NOTE='Pre-generated during the daily 11am sync from the last 30 days of data — not filtered by the date picker above.';
+function renderInsight(tab,type){
+  const insights=BANK.aiInsights||{};
+  const text=insights[tab]&&insights[tab][type];
+  if(text) return text+'<div class="ai-note">'+AI_TAB_NOTE+'</div>';
+  return '<span style="color:var(--ink4)">No pre-generated insight available for this tab yet — it appears after the next daily sync.</span>';
+}
+function genActiveTabAI(){
+  if(!BANK.aiInsights)return;
+  setAI('ai-'+activeTab, renderInsight(activeTab,'analyse'));
+}
+function genAllAI(){ genActiveTabAI(); }
+function aiAct(tab,type){
+  document.querySelectorAll('#p-'+tab+' .ai-act').forEach(b=>b.classList.remove('on'));
+  if(typeof event!=='undefined'&&event.currentTarget) event.currentTarget.classList.add('on');
+  setAI('ai-'+tab, renderInsight(tab,type));
+}
+function toggleAsk(tab){
+  const el=document.getElementById('ask-'+tab);
+  if(el)el.classList.toggle('show');
+}
+function sendAsk(tab){
+  // Free-text Q&A needs a live backend endpoint (e.g. a small serverless function proxying to Anthropic),
+  // which this GitHub-Actions-only architecture doesn't include. Use the four analysis buttons instead —
+  // see README.md "Upgrading to live Ask AI" for how to add this back with one small serverless function.
+  setAI('ai-'+tab, '<span style="color:var(--ink4)">Custom questions need a live backend endpoint, which isn&#39;t part of this lightweight setup. Use the buttons above for pre-generated analysis — see README.md to add live Q&amp;A back in with one small serverless function.</span>');
+}
+
+// ── NAV ──
+function switchTab(tab){ activeTab=tab; document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on')); document.querySelectorAll('.ch-btn').forEach(b=>b.classList.remove('on')); const p=document.getElementById('p-'+tab); const b=document.getElementById('sb-'+tab); if(p)p.classList.add('on'); if(b)b.classList.add('on'); genActiveTabAI(); }
+function setRange(el,p){
+  document.querySelectorAll('.dpill').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  period=p; customFrom=null; customTo=null;
+  const f=document.getElementById('drFrom'), t=document.getElementById('drTo');
+  if(f)f.value=''; if(t)t.value='';
+  render();
+}
+
+function setCustomRange(){
+  const fEl=document.getElementById('drFrom'), tEl=document.getElementById('drTo');
+  if(!fEl||!tEl||!fEl.value||!tEl.value) return;
+  let from=fEl.value, to=tEl.value;
+  // Clamp to the 90-day BANK window — never pull/display data older than 3 months
+  if(from < BANK_MIN_DATE) from = BANK_MIN_DATE;
+  if(to > BANK_MAX_DATE) to = BANK_MAX_DATE;
+  if(from > to){ const tmp=from; from=to; to=tmp; }
+  fEl.value = from; tEl.value = to;
+  document.querySelectorAll('.dpill').forEach(b=>b.classList.remove('on'));
+  period = 'custom'; customFrom = from; customTo = to;
+  render();
+}
+function setMTD(el){
+  document.querySelectorAll('.dpill').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  // Month-to-date is relative to the latest date actually in the BANK, not the browser's clock —
+  // keeps it consistent with the 90-day data window rather than possibly pointing past available data.
+  const maxD=new Date(BANK_MAX_DATE+'T00:00:00');
+  let firstOfMonth=new Date(maxD.getFullYear(),maxD.getMonth(),1);
+  let fromStr=firstOfMonth.toISOString().split('T')[0];
+  if(fromStr<BANK_MIN_DATE) fromStr=BANK_MIN_DATE; // clamp if month start falls outside the 90-day window
+  const fEl=document.getElementById('drFrom'), tEl=document.getElementById('drTo');
+  if(fEl)fEl.value=''; if(tEl)tEl.value='';
+  period='mtd'; customFrom=fromStr; customTo=BANK_MAX_DATE;
+  render();
+}
+
+// ── DATA FRESHNESS ──
+// Daily sync now happens server-side via GitHub Actions (see .github/workflows/sync-dashboard-data.yml).
+// No client-side polling/scheduling needed — this page just reads whatever the backend last wrote.
+
+// ── INIT ──
+// ── DATA LOADING ──
+// Data freshness is now the GitHub Actions job's responsibility (runs server-side, daily at 11am IST).
+// This page just fetches whatever the backend last wrote — no client-side sync, no exposed API keys.
+async function fetchBank(){
+  const res = await fetch('./data/bank.json', {cache:'no-store'});
+  if(!res.ok) throw new Error('bank.json fetch failed: '+res.status);
+  return res.json();
+}
+function formatSyncLabel(iso){
+  if(!iso) return 'Last sync: unknown';
+  const d=new Date(iso);
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return 'Last sync: '+d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear()+', '+d.toTimeString().slice(0,5);
+}
+(async function init(){
+  const syncEl=document.getElementById('syncLabel');
+  if(syncEl)syncEl.textContent='Loading dashboard data…';
+  try{
+    BANK = await fetchBank();
+  }catch(e){
+    if(syncEl)syncEl.textContent='⚠️ Could not load data — check data/bank.json is reachable';
+    console.error('Failed to load bank.json:', e);
+    return;
+  }
+  // Date picker bounds now come from the backend's last successful sync, not a hardcoded date
+  if(BANK.BANK_MIN_DATE) BANK_MIN_DATE = BANK.BANK_MIN_DATE;
+  if(BANK.BANK_MAX_DATE) BANK_MAX_DATE = BANK.BANK_MAX_DATE;
+  const drFrom=document.getElementById('drFrom'), drTo=document.getElementById('drTo');
+  if(drFrom){ drFrom.min=BANK_MIN_DATE; drFrom.max=BANK_MAX_DATE; }
+  if(drTo){ drTo.min=BANK_MIN_DATE; drTo.max=BANK_MAX_DATE; }
+  if(syncEl)syncEl.textContent=formatSyncLabel(BANK.last_sync)+' · data synced daily 11am IST';
+  render();
+})();
+</script>
+
+<!-- SHARED TREND MODAL — used by every clickable KPI card across all tabs -->
+<div class="trend-modal" id="trendModal" onclick="if(event.target===this)closeTrendModal()">
+  <div class="trend-modal-panel">
+    <div class="trend-modal-hdr">
+      <div class="trend-modal-title" id="trendModalTitle">📈 Metric trend</div>
+      <button class="trend-modal-close" onclick="closeTrendModal()">✕</button>
+    </div>
+    <div class="trend-modal-sub" id="trendModalSub"></div>
+    <div style="position:relative;height:320px;margin-top:14px"><canvas id="trendModalCanvas"></canvas></div>
+  </div>
+</div>
+</body>
+</html>
