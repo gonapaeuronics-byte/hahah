@@ -1,0 +1,37 @@
+name: Sync Euronics Dashboard Data
+
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run sync script
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TMR_API_KEY: ${{ secrets.TMR_API_KEY }}
+          TMR_AUTH_MODE: ${{ vars.TMR_AUTH_MODE || 'anthropic_mcp' }}
+        run: node scripts/sync-data.mjs
+
+      - name: Commit updated data
+        run: |
+          git config user.name "euronics-sync-bot"
+          git config user.email "actions@github.com"
+          git add data/bank.json
+          git diff --staged --quiet || git commit -m "chore: daily data sync $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
