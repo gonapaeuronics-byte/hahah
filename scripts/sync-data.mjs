@@ -63,7 +63,9 @@ function loadBank() {
 
 // ── TMR fetch: Anthropic MCP passthrough mode ──
 async function fetchViaTmrDirect(connector, startStr, endStr) {
-  if (!TMR_API_KEY) throw new Error('TMR_API_KEY not set');
+  if (!TMR_API_KEY) {
+    throw new Error('TMR_API_KEY not set');
+  }
 
   const accountId = connector.accountId.startsWith(`${connector.connectorId}_`)
     ? connector.accountId
@@ -85,12 +87,6 @@ async function fetchViaTmrDirect(connector, startStr, endStr) {
           startDate: startStr,
           endDate: endStr,
         },
-        sort: [
-          {
-            fieldId: 'date',
-            direction: 'asc',
-          },
-        ],
       }),
     }
   );
@@ -109,38 +105,10 @@ async function fetchViaTmrDirect(connector, startStr, endStr) {
     );
   }
 
-  // TMR returns rows as objects:
-  // { date: "2026-08-11", cost: 123, clicks: 45, ... }
-  //
-  // The dashboard's bank.json expects arrays:
-  // [date, metric1, metric2, ...]
   return (response.data || []).map(row => [
     row.date,
     ...connector.metrics.map(metric => row[metric] ?? 0),
   ]);
-}
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  let raw = '';
-  for (const block of data.content || []) {
-    const text = block.type === 'mcp_tool_result' ? (block.content?.[0]?.text || '') : (block.type === 'text' ? block.text : '');
-    if (text && text.includes('connectorResults')) { raw = text; break; }
-  }
-  if (!raw) throw new Error('No connectorResults found in response');
-  const fence = '```';
-  let clean = raw;
-  let fi = clean.indexOf(fence);
-  while (fi !== -1) {
-    const fe = clean.indexOf('\n', fi);
-    clean = clean.slice(0, fi) + (fe !== -1 ? clean.slice(fe + 1) : '');
-    fi = clean.indexOf(fence);
-  }
-  const j0 = clean.indexOf('{'), j1 = clean.lastIndexOf('}');
-  const parsed = JSON.parse(clean.slice(j0, j1 + 1));
-  const rows = parsed.connectorResults?.[0]?.results?.[0]?.data?.rows || [];
-  return rows;
 }
 
 // ── TMR fetch: direct API mode (PLACEHOLDER — fill in once TMR's own API is confirmed) ──
