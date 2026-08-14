@@ -1,0 +1,17 @@
+{
+  "name": "euronics-dashboard-server",
+  "version": "1.0.0",
+  "description": "Backend login + protected data API for the Euronics Digital Command Centre",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "create-user": "node create-user.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5"
+  }
+}
