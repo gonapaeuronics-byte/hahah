@@ -13,9 +13,13 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Keep the actual database file in server/data/ so it's easy to find,
-// back up, or exclude from GitHub (see .gitignore).
-const DATA_DIR = path.join(__dirname, 'data');
+// Keep the actual database file in its own clearly-separate folder,
+// named "app-data" — NOT "data" — because "data" is already used by
+// this project for bank.json (the business data your daily sync writes
+// to and commits to GitHub). Keeping them separate means there is no
+// chance of a login-database file accidentally interfering with, or
+// being confused for, your real dashboard data.
+const DATA_DIR = path.join(__dirname, 'app-data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }

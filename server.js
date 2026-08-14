@@ -58,7 +58,7 @@ app.use((req, res, next) => {
 app.use(
   session({
     store: new SQLiteSessionStore({
-      dir: path.join(__dirname, 'data')
+      dir: path.join(__dirname, 'app-data')
     }),
     name: 'euronics_sid',
     secret: process.env.SESSION_SECRET, // required — see .env.example
@@ -85,8 +85,11 @@ if (!process.env.SESSION_SECRET) {
 // directly from the repository checkout on Render. It is never served
 // as a plain public file — only handed back through this API, and only
 // to logged-in sessions.
+//
+// server.js lives at the repo root (alongside index.html, data/, and
+// scripts/), so bank.json is simply in the neighbouring "data" folder.
 const BANK_JSON_PATH =
-  process.env.BANK_JSON_PATH || path.join(__dirname, '..', 'data', 'bank.json');
+  process.env.BANK_JSON_PATH || path.join(__dirname, 'data', 'bank.json');
 
 // ── Routes ──
 
