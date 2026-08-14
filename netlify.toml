@@ -1,0 +1,22 @@
+# netlify.toml
+#
+# This file tells Netlify how to serve the site.
+# The one important rule below stops anyone from directly opening
+# /data/bank.json in a browser — instead, that URL now returns a
+# plain 404 "Not Found", the same as if the file didn't exist.
+#
+# This does NOT affect:
+#   - The GitHub Action, which still writes to data/bank.json normally
+#   - The backend server (Stage 2/5), which reads the file directly
+#     off disk — it never goes through this public web layer at all
+#
+# It ONLY blocks the public web address from working.
+
+[[redirects]]
+  from = "/data/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[build]
+  publish = "."
